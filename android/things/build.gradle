@@ -4,6 +4,12 @@ android {
     compileSdkVersion 27
     buildToolsVersion '27.0.3'
 
+    packagingOptions {
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/mimetypes.default'
+        exclude 'META-INF/mailcap.default'
+    }
+
     defaultConfig {
         applicationId "com.pluscubed.morsesms"
         minSdkVersion 27
@@ -30,7 +36,11 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
     compileOnly 'com.google.android.things:androidthings:+'
+    implementation 'com.google.android.things.contrib:driver-button:+'
     implementation 'com.android.support:appcompat-v7:27.1.0'
     compile 'com.jakewharton:butterknife:8.8.1'
     annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
+    compile('com.sun.mail:android-mail:1.6.1'){
+        exclude group: 'javax.activation'
+    }
 }

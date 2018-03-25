@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">Morse SMS</string>
+    <!--<string name="default_dest">default phone number</string>-->
+    <!--<string name="gmail_username">gmail email</string>-->
+    <!--<string name="gmail_password">gmail password</string>-->
 </resources>
