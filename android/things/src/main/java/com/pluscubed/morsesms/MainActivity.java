@@ -8,19 +8,30 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Log;
+
 import com.google.android.things.contrib.driver.button.Button;
 import com.google.android.things.pio.Gpio;
 import com.google.android.things.pio.GpioCallback;
 import com.google.android.things.pio.PeripheralManager;
 
-import javax.mail.*;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.Callable;
+
+import javax.mail.Message;
+import javax.mail.MessagingException;
+import javax.mail.Multipart;
+import javax.mail.PasswordAuthentication;
+import javax.mail.Session;
+import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.Callable;
 
 public class MainActivity extends Activity {
 
@@ -185,8 +196,36 @@ public class MainActivity extends Activity {
                 blinkLeds(userNumber.length() == 10 ? 3 : 1);
             } else */
             if (destNumber.length() < 10) {
-                // Only detect rising edge
-                if (!pressed) {
+                // Only detect falling edge
+                if (pressed) {
+                    timestamp = System.currentTimeMillis();
+                    return null;
+                }
+
+                if (System.currentTimeMillis() - timestamp > 5000) {
+                    //reset
+                    if (destNumber.length() >= 1) {
+                        destNumber = destNumber.substring(0, destNumber.length() - 1);
+
+                        boolean[] oldValues = new boolean[4];
+                        for (int i = 0; i < oldValues.length; i++) {
+                            oldValues[i] = outputGpios[i].getValue();
+                            outputGpios[i].setValue(true);
+                        }
+
+                        handler.postDelayed(() -> {
+                            safeIO(() -> {
+                                //Keep entering
+                                for (int i = 0; i < oldValues.length; i++) {
+                                    outputGpios[i].setValue(oldValues[i]);
+                                }
+                                return null;
+                            });
+                        }, 1000);
+
+                        Log.e(TAG, "Number delete: " + destNumber);
+                    }
+                    timestamp = 0;
                     return null;
                 }
 
