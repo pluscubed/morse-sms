@@ -234,7 +234,7 @@ public class MainActivity extends Activity {
                 userNumber = addDigitToNumber(userNumber);
                 blinkLeds(userNumber.length() == 10 ? 3 : 1);
             } else */
-           
+
             if (destNumber.length() < 10) {
                 // Only detect falling edge
                 if (pressed) {
@@ -243,9 +243,10 @@ public class MainActivity extends Activity {
                 }
 
                 if (System.currentTimeMillis() - timestamp > 5000) {
-                    // If pressed longer than 5 seconds, backspace
+                    // If pressed longer than 5 seconds
                     int currentDigit = readDigit();
                     if (destNumber.length() >= 1 && currentDigit == 0) {
+                        // backspace
                         destNumber = destNumber.substring(0, destNumber.length() - 1);
 
                         blinkLeds(1000);
@@ -258,6 +259,8 @@ public class MainActivity extends Activity {
                         } else if (currentDigit == 2) {
                             destNumber += "408";
                             onDestNumberUpdated();
+                        } else if (currentDigit == 3) {
+                            destNumber = getString(R.string.default_dest);
                         }
                     }
                     timestamp = 0;
@@ -389,10 +392,6 @@ public class MainActivity extends Activity {
 
         if (text != null)
             text.setText(message);
-
-        if (destNumber.equalsIgnoreCase("1111111111")) {
-            destNumber = getString(R.string.default_dest);
-        }
 
         AsyncTask.execute(() -> {
             Properties props = new Properties();
