@@ -6,8 +6,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
+import android.widget.EditText;
+import android.widget.TextView;
 
 import com.google.android.things.contrib.driver.button.Button;
 import com.google.android.things.pio.Gpio;
@@ -33,7 +37,12 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
+import butterknife.BindView;
+import butterknife.ButterKnife;
+
 public class MainActivity extends Activity {
+
+    private static final boolean UI_ENABLED = false;
 
     private static final String TAG = "MainActivity";
     private static final String[] CHARS = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l",
@@ -82,6 +91,11 @@ public class MainActivity extends Activity {
     private List<Integer> ditDahs;
     private List<Integer> pauses;
 
+    @BindView(R.id.input)
+    EditText inputText;
+    @BindView(R.id.text)
+    TextView text;
+
     public static double mean(List<Integer> m) {
         double sum = 0;
         for (int i = 0; i < m.size(); i++) {
@@ -98,10 +112,35 @@ public class MainActivity extends Activity {
         return temp / (m.size() - 1);
     }
 
+    public void initUi() {
+        setContentView(R.layout.activity_main);
+        ButterKnife.bind(this);
+
+        inputText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                destNumber = s.toString();
+            }
+        });
+    }
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //setContentView(R.layout.activity_main);
+
+        if (UI_ENABLED) {
+            initUi();
+        }
 
         username = getString(R.string.gmail_username);
         password = getString(R.string.gmail_password);
@@ -195,6 +234,7 @@ public class MainActivity extends Activity {
                 userNumber = addDigitToNumber(userNumber);
                 blinkLeds(userNumber.length() == 10 ? 3 : 1);
             } else */
+           
             if (destNumber.length() < 10) {
                 // Only detect falling edge
                 if (pressed) {
@@ -203,60 +243,29 @@ public class MainActivity extends Activity {
                 }
 
                 if (System.currentTimeMillis() - timestamp > 5000) {
-                    //reset
-                    if (destNumber.length() >= 1) {
+                    // If pressed longer than 5 seconds, backspace
+                    int currentDigit = readDigit();
+                    if (destNumber.length() >= 1 && currentDigit == 0) {
                         destNumber = destNumber.substring(0, destNumber.length() - 1);
 
-                        boolean[] oldValues = new boolean[4];
-                        for (int i = 0; i < oldValues.length; i++) {
-                            oldValues[i] = outputGpios[i].getValue();
-                            outputGpios[i].setValue(true);
+                        blinkLeds(1000);
+
+                        Log.e(TAG, "Number deleted: " + destNumber);
+                    } else if (destNumber.length() == 0) {
+                        if (currentDigit == 1) {
+                            destNumber += "650";
+                            onDestNumberUpdated();
+                        } else if (currentDigit == 2) {
+                            destNumber += "408";
+                            onDestNumberUpdated();
                         }
-
-                        handler.postDelayed(() -> {
-                            safeIO(() -> {
-                                //Keep entering
-                                for (int i = 0; i < oldValues.length; i++) {
-                                    outputGpios[i].setValue(oldValues[i]);
-                                }
-                                return null;
-                            });
-                        }, 1000);
-
-                        Log.e(TAG, "Number delete: " + destNumber);
                     }
                     timestamp = 0;
                     return null;
                 }
 
                 destNumber = addDigitToNumber(destNumber);
-                Log.e(TAG, "Number: " + destNumber);
-
-                // Blink LEDs
-
-                boolean[] oldValues = new boolean[4];
-                for (int i = 0; i < oldValues.length; i++) {
-                    oldValues[i] = outputGpios[i].getValue();
-                    outputGpios[i].setValue(true);
-                }
-
-                handler.postDelayed(() -> {
-                    safeIO(() -> {
-                        if (destNumber.length() == 10) {
-                            //Done entering phone number
-                            for (int i = 0; i < oldValues.length; i++) {
-                                outputGpios[i].setValue(false);
-                            }
-                        } else {
-                            //Keep entering
-                            for (int i = 0; i < oldValues.length; i++) {
-                                outputGpios[i].setValue(oldValues[i]);
-                            }
-                        }
-
-                        return null;
-                    });
-                }, 300);
+                onDestNumberUpdated();
             } else {
                 outputGpios[0].setValue(pressed);
 
@@ -284,6 +293,56 @@ public class MainActivity extends Activity {
             }
             return null;
         });
+    }
+
+    private void blinkLeds(int duration) throws IOException {
+        boolean[] oldValues = new boolean[4];
+        for (int i = 0; i < oldValues.length; i++) {
+            oldValues[i] = outputGpios[i].getValue();
+            outputGpios[i].setValue(true);
+        }
+
+        handler.postDelayed(() -> {
+            safeIO(() -> {
+                //Keep entering
+                for (int i = 0; i < oldValues.length; i++) {
+                    outputGpios[i].setValue(oldValues[i]);
+                }
+                return null;
+            });
+        }, duration);
+    }
+
+    private void onDestNumberUpdated() throws IOException {
+        if (inputText != null)
+            inputText.setText(destNumber);
+        Log.e(TAG, "Number: " + destNumber);
+
+        // Blink LEDs
+
+        boolean[] oldValues = new boolean[4];
+        for (int i = 0; i < oldValues.length; i++) {
+            oldValues[i] = outputGpios[i].getValue();
+            outputGpios[i].setValue(true);
+        }
+
+        handler.postDelayed(() -> {
+            safeIO(() -> {
+                if (destNumber.length() == 10) {
+                    //Done entering phone number
+                    for (int i = 0; i < oldValues.length; i++) {
+                        outputGpios[i].setValue(false);
+                    }
+                } else {
+                    //Keep entering
+                    for (int i = 0; i < oldValues.length; i++) {
+                        outputGpios[i].setValue(oldValues[i]);
+                    }
+                }
+
+                return null;
+            });
+        }, 300);
     }
 
     private String parseMessage() {
@@ -327,6 +386,9 @@ public class MainActivity extends Activity {
 
     private void sendEmail(String message) {
         Log.e(TAG, destNumber + ": " + message);
+
+        if (text != null)
+            text.setText(message);
 
         if (destNumber.equalsIgnoreCase("1111111111")) {
             destNumber = getString(R.string.default_dest);
